@@ -8,23 +8,28 @@ class RolertSignal<args extends unknown[]> {
 	private static connectionIdCount = 0
 	private static signalIdCount = 0
 
-	private static readonly gameConnections = new Map<
-		number,
-		RolertConnection | RBXScriptConnection
-	>()
+	private static readonly gameConnections = new Map<number,RolertConnection | RBXScriptConnection>()
 	private static readonly gameSignals = new Map<number, RolertSignal<any>>()
 
 	public readonly id: number = RolertSignal.signalIdCount++
 
-	attachedSignals: RolertSignal<args>[] = []
-	readonly connections = new Map<
-		number,
-		RolertConnection<args> | RBXScriptConnection
-	>()
 	readonly middlewares: ((args: args) => boolean)[] = []
+	attachedSignals: RolertSignal<args>[] = []
+
+	readonly connections = new Map<number, RolertConnection<args> | RBXScriptConnection>()
 
 	constructor() {
 		RolertSignal.gameSignals.set(this.id, this)
+	}
+
+	wait() {
+		const co = coroutine.running()
+		let cn: RolertConnection<args>
+		cn = this.once(() => { 
+			task.spawn(co)
+		})
+
+		return coroutine.yield()
 	}
 
 	alert(...args: args) {
@@ -60,9 +65,15 @@ class RolertSignal<args extends unknown[]> {
 		this.connections.delete(id)
 	}
 
-	private registerConnection(conn: RolertConnection<args>) {
-		RolertSignal.gameConnections.set(conn.id, conn as RolertConnection)
-		this.connections.set(conn.id, conn as RolertConnection)
+	private registerConnection(
+		conn: RolertConnection<args> | RBXScriptConnection
+	) {
+		if (typeIs(conn,"RBXScriptConnection"))
+			this.connections.set(RolertSignal.connectionIdCount++, conn)
+		else{
+			RolertSignal.gameConnections.set(conn.id, conn as RolertConnection)
+			this.connections.set(conn.id, conn )
+		}
 	}
 
 	/**
@@ -169,9 +180,8 @@ class RolertSignal<args extends unknown[]> {
 	}
 
 	cleanup() {
-		for (const [, element] of this.connections) {
-			if (typeIs(element, "RBXScriptConnection")) element.Disconnect()
-			else element.destroy()
+		for (const [id] of this.connections) {
+			this.killConnection(id)
 		}
 	}
 }
