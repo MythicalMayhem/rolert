@@ -1,4 +1,4 @@
-import { ConnectionState, ConnectionType } from "."
+import { ConnectionState, ConnectionType } from "./dict"
 
 class RolertConnection<callbackParams extends unknown[] = unknown[]> {
 	private static name: number = 0

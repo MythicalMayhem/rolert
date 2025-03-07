@@ -11,9 +11,9 @@ for %%f in ("out/*") do (
 	echo %%f | findstr /r "\.d\.ts" > nul
 	set is_dts=!errorlevel!
 	
-	if !is_dts! equ 0 if !is_index! equ 1 (
-			del %CD%\out\%%f 
-		)
+	@REM if !is_dts! equ 0 if !is_index! equ 1 (
+	@REM 		del %CD%\out\%%f 
+	@REM 	)
 	 
 
 )

@@ -10,7 +10,6 @@ export enum ConnectionType {
 	Expire,
 }
 
-
 interface RolertConnection {
 	wake: () => undefined
 	sleep: () => undefined
@@ -22,7 +21,7 @@ interface RolertSignal<args extends unknown[]> {
 	alert(...args: args): void
 
 	attach(otherAlert: RolertSignal<args>): void
-	
+
 	detach(otherAlert: RolertSignal<args>): void
 
 	connect(cb: (...params: args) => void, name?: string): RolertConnection

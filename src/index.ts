@@ -1,16 +1,6 @@
 import RolertConnection from "./RolertConnection"
 
-export enum ConnectionState {
-	Asleep = 1,
-	Awake,
-	Dead,
-}
-
-export enum ConnectionType {
-	Connect = 1,
-	Once,
-	Expire,
-}
+import { ConnectionState, ConnectionType } from "./dict"
 
 //todo: add memory debug features
 
@@ -125,6 +115,7 @@ class RolertSignal<args extends unknown[]> {
 	once(cb: (...params: args) => void, name?: string) {
 		const id = RolertSignal.connectionIdCount++
 		let conn: RolertConnection<args>
+
 		conn = new RolertConnection(
 			ConnectionType.Once,
 			name,
