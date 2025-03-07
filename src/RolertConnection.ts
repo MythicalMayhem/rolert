@@ -8,10 +8,10 @@ class RolertConnection<callbackParams extends unknown[] = unknown[]> {
 		public connectionType: ConnectionType,
 		public readonly name: string = "unnamed connection " + RolertConnection.name++,
 		readonly id: number,
-		readonly callback: (args: callbackParams) => Promise<void>
+		readonly callback: (args: callbackParams) => Promise<void> | void
 	) {}
 
-	wake() {
+	reconnect() {
 		if (this.state === ConnectionState.Dead) return
 		this.state = ConnectionState.Awake
 	}
