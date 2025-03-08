@@ -5,7 +5,7 @@ import { ConnectionState, ConnectionType } from "./dict"
 
 //todo: add memory debug features
 
-class RolertSignal<args extends (unknown[] | unknown)> {
+class RolertSignal<args extends (unknown[] | unknown) = void> {
 	private static connectionIdCount = 0
 	private static signalIdCount = 0
 
