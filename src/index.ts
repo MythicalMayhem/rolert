@@ -1,6 +1,7 @@
-import RolertConnection from "./RolertConnection"
+import RolertConnection, { callback, params } from "./RolertConnection"
 
 import { ConnectionState, ConnectionType } from "./dict"
+
 
 //todo: add memory debug features
 
@@ -13,10 +14,10 @@ class RolertSignal<args extends (unknown[] | unknown)> {
 
 	public readonly id: number = RolertSignal.signalIdCount++
 
-	readonly middlewares: ((args: args) => boolean)[] = []
+	readonly middlewares: ((...args: params<args>) => boolean)[] = []
 	attachedSignals: RolertSignal<args>[] = []
 
-	readonly connections = new Map<number, RolertConnection<args> | RBXScriptConnection>()
+	readonly connections = new Map<number, RolertConnection | RBXScriptConnection>()
 
 	private alive = true
 
@@ -24,15 +25,18 @@ class RolertSignal<args extends (unknown[] | unknown)> {
 		RolertSignal.gameSignals.set(this.id, this)
 	}
 
-	fire(args: args) {
+	/**
+	 * executes the callback of all connections
+	*/
+	Alert(...args: params<args>) {
 		if(!this.alive) return warn('cannot fire dispatched signal')
 		xpcall(
 			() => {
 				for (const middleware of this.middlewares)
-					if (!middleware(args)) return
+					if (!middleware(...args)) return
 
 				for (const attachedSignal of this.attachedSignals)
-					attachedSignal.fire(args)
+					attachedSignal.Alert(...args)
 
 				for (const [id, element] of this.connections) {
 					if (typeIs(element, "RBXScriptConnection")) continue
@@ -70,7 +74,7 @@ class RolertSignal<args extends (unknown[] | unknown)> {
 	}
 
 	private registerConnection(
-		conn: RolertConnection<args> | RBXScriptConnection
+		conn: RolertConnection | RBXScriptConnection
 	) {
 		if (typeIs(conn,"RBXScriptConnection"))
 			this.connections.set(RolertSignal.connectionIdCount++, conn)
@@ -110,7 +114,7 @@ class RolertSignal<args extends (unknown[] | unknown)> {
 	createBindToRBXSignal<T extends Callback>(
 		rbxSignal: RBXScriptSignal<T>,
 		persist: boolean,
-		argumentArray: args,
+		argumentArray: params<args>,
 		name?:string
 	) {
 		if (!this.alive) return warn('signal is dispatched')
@@ -118,10 +122,10 @@ class RolertSignal<args extends (unknown[] | unknown)> {
 		const conn = persist
 			? rbxSignal.Connect((() => {
 					if (isAsleep) return
-					this.fire(argumentArray)
+					this.Alert(...argumentArray)
 			  }) as T)
 			: rbxSignal.Once((() => {
-					this.fire(argumentArray)
+					this.Alert(...argumentArray)
 			  }) as T)
 		
 		const id = this.registerConnection(conn)
@@ -137,9 +141,11 @@ class RolertSignal<args extends (unknown[] | unknown)> {
 	 * yields threa until next signal event
 	 * @yields
 	 */
-	wait(callback: (params: args) => void, name?:string) {
+	wait(callback: callback<args>, name?:string) {
 		const co = coroutine.running()
-		const conn = this.once((params: args) => coroutine.status(co)==="suspended" && task.spawn(co) && callback(params), name)
+		const conn = this.once((...params: params<args>) => {
+			coroutine.status(co)==="suspended" && task.spawn(co) && callback(...params)
+		}, name)
 		coroutine.yield()
 		return {
 			disconnect:()=>{
@@ -155,14 +161,14 @@ class RolertSignal<args extends (unknown[] | unknown)> {
 	 * @param name optional for debugging
 	 * @returns 
 	 */
-	connect(callback: (params: args) => void, name?: string) {
+	connect(callback: callback<args>, name?: string) {
 		if (!this.alive) return warn('signal is dispatched')
 		const id = RolertSignal.connectionIdCount++
 		const conn = new RolertConnection(
 			ConnectionType.Connect,
 			name,
 			id,
-			(params: args) => callback(params)
+			(...args:params<args>)=>callback(...args)
 		)
 		this.registerConnection(conn)
 		return conn
@@ -173,16 +179,16 @@ class RolertSignal<args extends (unknown[] | unknown)> {
 	 * @param callback runs on the next signal fire
 	 * @param name optional for debugging
 	 */
-	once(callback: (params: args) => void, name?: string) {
+	once(callback: callback<args>, name?: string) {
 		if (!this.alive) return warn('signal is dispatched')
 		const id = RolertSignal.connectionIdCount++
 		const conn = new RolertConnection(
 			ConnectionType.Once,
 			name,
 			id,
-			(params: args) => {
+			(...params:params<args>) => {
 				this.killConnection(id)
-				callback(params)
+				callback(...params)
 			}
 		)
 		this.registerConnection(conn)
@@ -202,7 +208,7 @@ class RolertSignal<args extends (unknown[] | unknown)> {
 	 */
 	expire(
 		duration: number,
-		onSuccess: (params: args) => void,
+		onSuccess: callback<args>,
 		onExpire?: () => void,
 		_yield: boolean = false,
 		name?: string
@@ -214,10 +220,10 @@ class RolertSignal<args extends (unknown[] | unknown)> {
 			ConnectionType.Once,
 			name,
 			id,
-			(params: args) => {
+			(...params: params<args>) => {
 				T = -1
 				this.killConnection(id)
-				if (tick() - T < duration) onSuccess(params)
+				if (tick() - T < duration) onSuccess(...params)
 			}
 		)
 

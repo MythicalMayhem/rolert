@@ -1,14 +1,25 @@
 import { ConnectionState, ConnectionType } from "./dict"
 
-class RolertConnection<callbackParams extends (unknown[] | unknown) = unknown> {
+export type params<T> = Parameters<
+	T extends unknown[]
+		? (...args: T) => void
+		: T extends unknown
+		? (arg: T) => void
+		: () => void
+>
+
+export type callback<T> = (...args: params<T>) => Promise<void> | void
+
+class RolertConnection<T extends (unknown | unknown[]) = unknown> {
 	private static name: number = 0
 	state: ConnectionState = ConnectionState.Awake
 
 	constructor(
 		public connectionType: ConnectionType,
-		public readonly name: string = "unnamed connection " + RolertConnection.name++,
+		public readonly name: string = "unnamed connection " +
+			RolertConnection.name++,
 		readonly id: number,
-		readonly callback: (args: callbackParams) => Promise<void> | void
+		readonly callback: callback<T>
 	) {}
 
 	reconnect() {
