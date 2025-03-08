@@ -4,7 +4,7 @@ import { ConnectionState, ConnectionType } from "./dict"
 
 //todo: add memory debug features
 
-class RolertSignal<args extends unknown[]> {
+class RolertSignal<args extends (unknown[] | unknown)> {
 	private static connectionIdCount = 0
 	private static signalIdCount = 0
 
@@ -24,7 +24,7 @@ class RolertSignal<args extends unknown[]> {
 		RolertSignal.gameSignals.set(this.id, this)
 	}
 
-	fire(...args: args) {
+	fire(args: args) {
 		if(!this.alive) return warn('cannot fire dispatched signal')
 		xpcall(
 			() => {
@@ -32,7 +32,7 @@ class RolertSignal<args extends unknown[]> {
 					if (!middleware(args)) return
 
 				for (const attachedSignal of this.attachedSignals)
-					attachedSignal.fire(...args)
+					attachedSignal.fire(args)
 
 				for (const [id, element] of this.connections) {
 					if (typeIs(element, "RBXScriptConnection")) continue
@@ -118,10 +118,10 @@ class RolertSignal<args extends unknown[]> {
 		const conn = persist
 			? rbxSignal.Connect((() => {
 					if (isAsleep) return
-					this.fire(...argumentArray)
+					this.fire(argumentArray)
 			  }) as T)
 			: rbxSignal.Once((() => {
-					this.fire(...argumentArray)
+					this.fire(argumentArray)
 			  }) as T)
 		
 		const id = this.registerConnection(conn)
@@ -137,9 +137,9 @@ class RolertSignal<args extends unknown[]> {
 	 * yields threa until next signal event
 	 * @yields
 	 */
-	wait(callback: (...params: args) => void, name?:string) {
+	wait(callback: (params: args) => void, name?:string) {
 		const co = coroutine.running()
-		const conn = this.once((...params: args) => coroutine.status(co)==="suspended" && task.spawn(co) && callback(...params), name)
+		const conn = this.once((params: args) => coroutine.status(co)==="suspended" && task.spawn(co) && callback(params), name)
 		coroutine.yield()
 		return {
 			disconnect:()=>{
@@ -155,14 +155,14 @@ class RolertSignal<args extends unknown[]> {
 	 * @param name optional for debugging
 	 * @returns 
 	 */
-	connect(callback: (...params: args) => void, name?: string) {
+	connect(callback: (params: args) => void, name?: string) {
 		if (!this.alive) return warn('signal is dispatched')
 		const id = RolertSignal.connectionIdCount++
 		const conn = new RolertConnection(
 			ConnectionType.Connect,
 			name,
 			id,
-			(params: args) => callback(...params)
+			(params: args) => callback(params)
 		)
 		this.registerConnection(conn)
 		return conn
@@ -173,7 +173,7 @@ class RolertSignal<args extends unknown[]> {
 	 * @param callback runs on the next signal fire
 	 * @param name optional for debugging
 	 */
-	once(callback: (...params: args) => void, name?: string) {
+	once(callback: (params: args) => void, name?: string) {
 		if (!this.alive) return warn('signal is dispatched')
 		const id = RolertSignal.connectionIdCount++
 		const conn = new RolertConnection(
@@ -182,7 +182,7 @@ class RolertSignal<args extends unknown[]> {
 			id,
 			(params: args) => {
 				this.killConnection(id)
-				callback(...params)
+				callback(params)
 			}
 		)
 		this.registerConnection(conn)

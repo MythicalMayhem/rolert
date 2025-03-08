@@ -1,6 +1,6 @@
 import { ConnectionState, ConnectionType } from "./dict"
 
-class RolertConnection<callbackParams extends unknown[] = unknown[]> {
+class RolertConnection<callbackParams extends (unknown[] | unknown) = unknown> {
 	private static name: number = 0
 	state: ConnectionState = ConnectionState.Awake
 
