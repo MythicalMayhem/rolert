@@ -1,6 +1,6 @@
 {
 	"name": "@rbxts/rolert",
-	"version": "0.5.0",
+	"version": "0.5.52",
 	"main": "out/init.lua",
 	"scripts": {
 		"build": "rbxtsc",
