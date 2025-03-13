@@ -1,0 +1,4 @@
+{
+	"robloxLsp.diagnostics.disable": ["undefined-type"],
+	"luau-lsp.types.definitionFiles": ["types.d.luau"]
+}
